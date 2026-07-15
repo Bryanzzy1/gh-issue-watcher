@@ -37,12 +37,15 @@ cp .env.example .env      # Windows: copy .env.example .env
 ## Configure repos
 
 Edit `config.yaml`. `defaults` apply to every repo and any repo can override
-them. Four toggleable filters:
+them. It ships with about 100 ML, CUDA, and scientific repos. Four toggleable
+filters:
 
-- `labels_any`: match if the issue has ANY of these labels.
+- `labels_any`: match if the issue has ANY of these labels. Defaults to
+  "good first issue", "help wanted", "good second issue", and "easy", so you
+  catch beginner and next-level issues.
 - `require_unassigned`: skip issues with an assignee.
 - `require_no_linked_pr`: skip issues that appear to have a linked PR.
-- `max_age_days` / `min_age_days`: recency window.
+- `max_age_days` / `min_age_days`: recency window. Default is the last 90 days.
 
 ## Dry run first
 
@@ -80,8 +83,11 @@ Setup:
    - `GMAIL_ADDRESS`: your sending Gmail address.
    - `GMAIL_APP_PASSWORD`: the 16-char Gmail App Password.
    - `NOTIFY_TO`: where the digest goes.
-2. The workflow uses the built-in `GITHUB_TOKEN` for API reads, so no extra
-   token is needed.
+2. The workflow uses the built-in token for API reads, so no extra token is
+   required. With about 100 repos, adding a personal token gives more rate-limit
+   headroom (5,000 req/hr instead of 1,000). To use one, create a read-only
+   public token with no scopes and add it as a secret named `GH_API_TOKEN`. The
+   workflow uses it automatically if present.
 3. Trigger a first run from the Actions tab (Run workflow) to confirm it works.
 
 The run commits `seen.json` back to the repo so dedupe state carries across

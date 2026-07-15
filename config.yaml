@@ -3,17 +3,19 @@
 # `defaults` apply to every repo. Any repo under `repos:` can override any
 # default key by listing it again with a new value.
 #
-# All repos below are CUDA or ML focused (C++, Python, CUDA). Verified on
-# 2026-07-15 to exist, be actively maintained (recent push, not archived), and
-# have beginner-issue history. The count after each repo is how many open
-# "good first issue" (gfi) and "help wanted" (hw) issues it had at check time.
-# "(watch)" means 0 matching-label issues were open then but the repo is active,
-# so matches will appear as maintainers tag new issues.
+# All repos are ML, CUDA, or scientific/numeric focused (C++, Python, CUDA,
+# some Rust). Verified on 2026-07-15 to exist, be actively maintained (recent
+# push, not archived), and have beginner-issue history. The number after each
+# repo is how many open beginner-ish issues it had at check time across the
+# labels below. "(watch)" means 0 were open then but the repo is active, so
+# matches appear as maintainers tag new issues.
 
 defaults:
   labels_any:              # an issue matches if it has ANY of these labels
     - good first issue
     - help wanted
+    - good second issue    # next level up from beginner
+    - easy
   require_unassigned: true       # skip issues that already have an assignee
   require_no_linked_pr: true     # skip issues that appear to have a linked PR
   max_age_days: 90               # skip issues not updated within the last 3 months
@@ -75,3 +77,87 @@ repos:
   - {owner: kokkos, name: kokkos}            # (watch) C++ performance portability
   - {owner: taichi-dev, name: taichi}        # gfi=18 hw=0   parallel compute, C++
   - {owner: tensorflow, name: tensorflow}    # (watch) ML framework, C++/Python
+
+  # More NVIDIA CUDA libraries
+  - {owner: NVIDIA, name: cuda-samples}      # (watch) CUDA example code
+  - {owner: NVIDIA, name: MatX}              # (watch) CUDA C++ tensor library
+  - {owner: NVIDIA, name: cuCollections}     # 13   CUDA data structures
+  - {owner: NVIDIA, name: nvbench}           # 5    CUDA benchmarking
+  - {owner: NVIDIA, name: stdexec}           # (watch) C++ senders/receivers
+  - {owner: NVIDIA, name: Megatron-LM}       # 2    large-scale training
+  - {owner: NVIDIA, name: cuda-quantum}      # 13   quantum-classical, C++
+  - {owner: NVIDIA-NeMo, name: Speech}       # 3    speech AI toolkit
+  - {owner: NVIDIA, name: physicsnemo}       # (watch) physics ML
+  - {owner: NVIDIA, name: TransformerEngine} # (watch) FP8 transformer kernels
+  - {owner: NVIDIA, name: apex}              # (watch) mixed-precision PyTorch
+
+  # More RAPIDS
+  - {owner: rapidsai, name: dask-cuda}       # (watch) multi-GPU Dask
+  - {owner: rapidsai, name: cucim}           # (watch) GPU image IO
+
+  # More PyTorch ecosystem
+  - {owner: pytorch, name: vision}           # 47   torchvision
+  - {owner: pytorch, name: audio}            # 12   torchaudio
+  - {owner: pytorch, name: xla}              # 47   PyTorch on XLA/TPU
+  - {owner: pytorch, name: ignite}           # 27   training helpers
+  - {owner: meta-pytorch, name: torchtune}   # 9    LLM fine-tuning
+  - {owner: Lightning-AI, name: pytorch-lightning} # 120  training framework
+
+  # Hugging Face ecosystem
+  - {owner: huggingface, name: transformers} # (watch) model library, Python
+  - {owner: huggingface, name: diffusers}    # 38   diffusion models
+  - {owner: huggingface, name: accelerate}   # 1    distributed training
+  - {owner: huggingface, name: datasets}     # 11   dataset library
+  - {owner: huggingface, name: peft}         # 1    parameter-efficient tuning
+  - {owner: huggingface, name: tokenizers}   # (watch) fast tokenizers, Rust
+  - {owner: huggingface, name: candle}       # (watch) ML framework, Rust
+
+  # Inference and serving
+  - {owner: mlc-ai, name: mlc-llm}           # 2    universal LLM deployment
+  - {owner: sgl-project, name: sglang}       # 50   LLM serving
+  - {owner: tinygrad, name: tinygrad}        # 2    minimal DL framework
+  - {owner: ml-explore, name: mlx}           # (watch) array framework, C++
+
+  # Numeric and scientific Python
+  - {owner: numpy, name: numpy}              # (watch) array computing
+  - {owner: scipy, name: scipy}              # 6    scientific computing
+  - {owner: pandas-dev, name: pandas}        # (watch) dataframes
+  - {owner: cupy, name: cupy}                # 10   GPU NumPy, CUDA
+  - {owner: numba, name: numba}              # 89   JIT compiler, CUDA
+  - {owner: sympy, name: sympy}              # 3    symbolic math
+  - {owner: statsmodels, name: statsmodels}  # 11   statistics
+  - {owner: scikit-image, name: scikit-image}# (watch) image processing
+  - {owner: networkx, name: networkx}        # (watch) graph algorithms
+
+  # Computer vision
+  - {owner: opencv, name: opencv}            # (watch) vision library, C++
+  - {owner: ultralytics, name: ultralytics}  # (watch) YOLO models
+  - {owner: facebookresearch, name: detectron2} # (watch) detection, Python
+  - {owner: kornia, name: kornia}            # 36   differentiable CV
+
+  # Graph and geometric ML
+  - {owner: pyg-team, name: pytorch_geometric} # 51  graph neural networks
+
+  # JAX ecosystem
+  - {owner: google, name: flax}              # (watch) neural nets on JAX
+  - {owner: google-deepmind, name: optax}    # 1    JAX optimizers
+  - {owner: keras-team, name: keras}         # (watch) high-level DL API
+
+  # HPC and scientific computing, C++
+  - {owner: root-project, name: root}        # 27   data analysis, C++
+  - {owner: dealii, name: dealii}            # (watch) finite elements, C++
+  - {owner: FEniCS, name: dolfinx}           # 5    finite elements, C++
+  - {owner: arrayfire, name: arrayfire}      # 2    GPU compute, C++
+  - {owner: google, name: XNNPACK}           # (watch) NN inference kernels, C
+
+  # Classic ML tooling
+  - {owner: onnx, name: onnxmltools}         # (watch) ONNX converters
+  - {owner: scikit-learn-contrib, name: imbalanced-learn} # (watch) imbalanced data
+  - {owner: optuna, name: optuna}            # (watch) hyperparameter tuning
+  - {owner: safetensors, name: safetensors}  # (watch) tensor serialization, Rust
+
+  # Distributed and orchestration
+  - {owner: ray-project, name: ray}          # (watch) distributed compute, Python
+  - {owner: InternLM, name: lmdeploy}        # (watch) LLM deployment toolkit
+  - {owner: meta-pytorch, name: torchrec}    # (watch) recommendation systems
+  - {owner: pytorch, name: torchtitan}       # (watch) large-model training

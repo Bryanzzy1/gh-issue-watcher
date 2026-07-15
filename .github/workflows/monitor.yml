@@ -32,9 +32,10 @@ jobs:
 
       - name: Run monitor
         env:
-          # Built-in token. Raises the API rate limit and reads public repos.
-          # No need to create your own read token for the Actions run.
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Use the personal token secret GH_API_TOKEN if set (5,000 req/hr),
+          # otherwise fall back to the built-in token (1,000 req/hr). With 100
+          # repos the personal token gives useful headroom.
+          GITHUB_TOKEN: ${{ secrets.GH_API_TOKEN || secrets.GITHUB_TOKEN }}
           GMAIL_ADDRESS: ${{ secrets.GMAIL_ADDRESS }}
           GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
           NOTIFY_TO: ${{ secrets.NOTIFY_TO }}
