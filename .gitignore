@@ -1,4 +1,4 @@
-# Secrets — never commit real credentials
+# Secrets
 .env
 
 # Local dedupe store the script writes on every run
