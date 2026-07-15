@@ -490,6 +490,17 @@ def process_repo(session, repo):
 def main():
     dry_run = "--dry-run" in sys.argv
 
+    # --test-email sends one fixed message and exits, to confirm SMTP works.
+    if "--test-email" in sys.argv:
+        secrets = load_secrets(require_email=True)
+        send_email(
+            secrets,
+            "[gfi-monitor] test email",
+            "This is a test from gfi-monitor. If you got this, sending works.",
+            dry_run=False,
+        )
+        return
+
     _defaults, repos = load_config()
     secrets = load_secrets(require_email=not dry_run)
     session = github_session(secrets["GITHUB_TOKEN"])

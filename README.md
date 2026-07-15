@@ -53,6 +53,12 @@ while tuning `config.yaml`.
 python monitor.py --dry-run
 ```
 
+Test that email sending works, without waiting for real matches:
+
+```bash
+python monitor.py --test-email
+```
+
 Then run for real to send the first digest and populate `seen.json`:
 
 ```bash
@@ -61,7 +67,30 @@ python monitor.py
 
 ## Schedule it
 
-### Windows Task Scheduler
+### GitHub Actions (runs 24/7, does not need your computer)
+
+The workflow in `.github/workflows/monitor.yml` runs on GitHub's servers every
+3 hours, so it works whether your computer is on, asleep, or off. Free for a
+public repo.
+
+Setup:
+
+1. In the repo, go to Settings, Secrets and variables, Actions, New repository
+   secret. Add three secrets:
+   - `GMAIL_ADDRESS`: your sending Gmail address.
+   - `GMAIL_APP_PASSWORD`: the 16-char Gmail App Password.
+   - `NOTIFY_TO`: where the digest goes.
+2. The workflow uses the built-in `GITHUB_TOKEN` for API reads, so no extra
+   token is needed.
+3. Trigger a first run from the Actions tab (Run workflow) to confirm it works.
+
+The run commits `seen.json` back to the repo so dedupe state carries across
+runs. That file holds only issue keys and timestamps, no secrets.
+
+### Windows Task Scheduler (local, only while the PC is on)
+
+This runs only while the computer is powered on and not rebooted. Use GitHub
+Actions above if you want true 24/7.
 
 1. Create Basic Task named "gfi-monitor". Trigger: Daily.
 2. Edit the trigger, check "Repeat task every: 3 hours" for 1 day.

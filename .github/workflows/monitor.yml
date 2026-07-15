@@ -1,0 +1,54 @@
+name: gfi-monitor
+
+# Runs on GitHub's servers, so it does not depend on any local machine.
+on:
+  schedule:
+    - cron: "0 */3 * * *"   # every 3 hours, UTC
+  workflow_dispatch: {}      # lets you run it manually from the Actions tab
+
+# Needed so the job can commit the updated seen.json back to the repo.
+permissions:
+  contents: write
+
+# Never run two copies at once. They would race on seen.json.
+concurrency:
+  group: gfi-monitor
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: python -m pip install -r requirements.txt
+
+      - name: Run monitor
+        env:
+          # Built-in token. Raises the API rate limit and reads public repos.
+          # No need to create your own read token for the Actions run.
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GMAIL_ADDRESS: ${{ secrets.GMAIL_ADDRESS }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+          NOTIFY_TO: ${{ secrets.NOTIFY_TO }}
+        run: python monitor.py
+
+      - name: Persist seen.json
+        # seen.json is git-ignored for local use, so force-add it here.
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -f seen.json || true
+          if git diff --cached --quiet; then
+            echo "No seen.json changes to commit."
+          else
+            git commit -m "Update seen.json [skip ci]"
+            git push
+          fi
