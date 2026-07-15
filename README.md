@@ -1,6 +1,6 @@
 # gfi-monitor
 
-A small, zero-cost, read-only bot that scans GitHub repos for beginner-friendly
+A small, read-only bot that scans GitHub repos for beginner-friendly
 issues and emails you a digest of new ones. It only reads public data and never
 writes to GitHub. It runs once and exits. Your OS scheduler makes it recurring.
 
