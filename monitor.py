@@ -422,44 +422,139 @@ def issue_key(repo, issue):
 
 # Email digest
 
-def build_digest(matches):
-    """Return (subject, plaintext_body) for the list of new matches."""
-    count = len(matches)
-    subject = f"[gfi-monitor] {count} new good-first-issue match" + ("es" if count != 1 else "")
+def rank_matches(matches):
+    """
+    Sort matches so the best opportunities come first.
 
-    lines = [
-        f"Found {count} new issue(s) matching your filters:",
-        "",
-    ]
-    for m in matches:
+    Order: least activity first (fewest comments), then newest (most recently
+    created), then by labels alphabetically. Few comments means untouched, and
+    among those the freshest issues are easiest to grab.
+    """
+    def sort_key(m):
+        issue = m["issue"]
+        comments = issue.get("comments", 0)
+        created = _parse_iso(issue.get("created_at"))
+        # Negate so a more recent (larger) timestamp sorts first.
+        newest_first = -(created.timestamp() if created else 0)
+        labels = ",".join(sorted(lbl["name"].lower()
+                                  for lbl in issue.get("labels", [])))
+        return (comments, newest_first, labels)
+
+    return sorted(matches, key=sort_key)
+
+
+def _age_days(iso_value):
+    """Whole days since the given ISO timestamp, or None if unparseable."""
+    ts = _parse_iso(iso_value)
+    if ts is None:
+        return None
+    return (datetime.now(timezone.utc) - ts).days
+
+
+def build_digest(matches):
+    """Return (subject, text_body, html_body), ranked least-worked-on first."""
+    matches = rank_matches(matches)
+    count = len(matches)
+    subject = f"[gfi-monitor] {count} new issue" + ("s" if count != 1 else "") + " to work on"
+
+    # Plain-text version (fallback for clients that do not render HTML).
+    lines = [f"{count} new issue(s), ranked least-worked-on first:", ""]
+    for i, m in enumerate(matches, 1):
         issue = m["issue"]
         labels = ", ".join(lbl["name"] for lbl in issue.get("labels", [])) or "(none)"
-        lines.append(f"• {m['repo_full']}#{issue['number']}: {issue['title']}")
-        lines.append(f"    labels : {labels}")
-        lines.append(f"    updated: {issue.get('updated_at', '?')}")
-        lines.append(f"    url    : {issue.get('html_url', '?')}")
+        comments = issue.get("comments", 0)
+        age = _age_days(issue.get("created_at"))
+        age_str = f"{age}d old" if age is not None else "age unknown"
+        lines.append(f"{i}. {m['repo_full']}#{issue['number']}: {issue['title']}")
+        lines.append(f"    {comments} comment(s), {age_str}")
+        lines.append(f"    labels: {labels}")
+        lines.append(f"    {issue.get('html_url', '?')}")
         if m["pr_flag"]:
-            lines.append("    ⚠ verify no linked PR before starting "
+            lines.append("    verify no linked PR before starting "
                          "(automatic check was inconclusive)")
         lines.append("")
-
     lines.append("gfi-monitor (read-only). This tool never writes to GitHub.")
-    return subject, "\n".join(lines)
+    text_body = "\n".join(lines)
+
+    html_body = _build_html(matches, count)
+    return subject, text_body, html_body
 
 
-def send_email(secrets, subject, body, dry_run=False):
+def _esc(text):
+    """Minimal HTML escaping for issue titles and labels."""
+    return (str(text).replace("&", "&amp;").replace("<", "&lt;")
+            .replace(">", "&gt;").replace('"', "&quot;"))
+
+
+def _build_html(matches, count):
+    """Build a clean, restrained HTML digest. Ranked least-worked-on first."""
+    rows = []
+    for i, m in enumerate(matches, 1):
+        issue = m["issue"]
+        comments = issue.get("comments", 0)
+        age = _age_days(issue.get("created_at"))
+        age_str = f"{age}d old" if age is not None else "age unknown"
+        url = _esc(issue.get("html_url", "#"))
+        title = _esc(issue.get("title", "(no title)"))
+        repo_ref = _esc(f"{m['repo_full']}#{issue['number']}")
+        label_chips = "".join(
+            f'<span style="display:inline-block;background:#eef2f7;color:#334;'
+            f'border-radius:10px;padding:1px 8px;margin:2px 4px 2px 0;'
+            f'font-size:12px;">{_esc(lbl["name"])}</span>'
+            for lbl in issue.get("labels", [])
+        )
+        flag = ""
+        if m["pr_flag"]:
+            flag = ('<div style="color:#a15c00;font-size:12px;margin-top:4px;">'
+                    "verify no linked PR before starting "
+                    "(automatic check was inconclusive)</div>")
+        rows.append(f"""
+        <tr>
+          <td style="vertical-align:top;padding:12px 8px;color:#888;
+              font-size:14px;width:28px;">{i}</td>
+          <td style="padding:12px 8px;border-bottom:1px solid #eee;">
+            <a href="{url}" style="color:#1a56db;text-decoration:none;
+               font-size:15px;font-weight:600;">{title}</a>
+            <div style="color:#666;font-size:12px;margin:3px 0;">{repo_ref}
+              &nbsp;&middot;&nbsp; {comments} comment(s)
+              &nbsp;&middot;&nbsp; {age_str}</div>
+            <div style="margin-top:4px;">{label_chips}</div>{flag}
+          </td>
+        </tr>""")
+
+    return f"""<!DOCTYPE html>
+<html><body style="margin:0;padding:0;background:#f6f7f9;">
+  <div style="max-width:640px;margin:0 auto;padding:24px 16px;
+       font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;">
+    <h2 style="margin:0 0 4px;color:#111;font-size:18px;">
+      {count} new issue{"s" if count != 1 else ""} to work on</h2>
+    <p style="margin:0 0 16px;color:#666;font-size:13px;">
+      Ranked least-worked-on first (fewest comments, then newest).</p>
+    <table style="width:100%;border-collapse:collapse;background:#fff;
+        border:1px solid #eee;border-radius:8px;">{"".join(rows)}
+    </table>
+    <p style="margin:16px 0 0;color:#999;font-size:11px;">
+      gfi-monitor (read-only). This tool never writes to GitHub.</p>
+  </div>
+</body></html>"""
+
+
+def send_email(secrets, subject, text_body, html_body=None, dry_run=False):
     """Send one digest email over Gmail SMTP-SSL. If dry_run, print instead."""
     msg = EmailMessage()
     msg["From"] = secrets["GMAIL_ADDRESS"]
     msg["To"] = secrets["NOTIFY_TO"]
     msg["Subject"] = subject
     msg["Date"] = formatdate(localtime=True)
-    msg.set_content(body)
+    msg.set_content(text_body)
+    if html_body:
+        # HTML alternative. Clients that cannot render it show the plain text.
+        msg.add_alternative(html_body, subtype="html")
 
     if dry_run:
         print("\n===== DRY RUN, email not sent, showing what would be sent =====")
         print(f"From: {msg['From']}\nTo: {msg['To']}\nSubject: {msg['Subject']}\n")
-        print(body)
+        print(text_body)
         print("===== END DRY RUN =====\n")
         return
 
@@ -467,7 +562,7 @@ def send_email(secrets, subject, body, dry_run=False):
     with smtplib.SMTP_SSL("smtp.gmail.com", 465, context=context) as server:
         server.login(secrets["GMAIL_ADDRESS"], secrets["GMAIL_APP_PASSWORD"])
         server.send_message(msg)
-    print(f"  ✓ sent digest to {secrets['NOTIFY_TO']}")
+    print(f"  sent digest to {secrets['NOTIFY_TO']}")
 
 
 # Main
@@ -536,6 +631,7 @@ def main():
             secrets,
             "[gfi-monitor] test email",
             "This is a test from gfi-monitor. If you got this, sending works.",
+            html_body=None,
             dry_run=False,
         )
         return
@@ -584,8 +680,8 @@ def main():
         print("Nothing new to report. Silent success, no email sent.")
         return
 
-    subject, body = build_digest(new_matches)
-    send_email(secrets, subject, body, dry_run=dry_run)
+    subject, text_body, html_body = build_digest(new_matches)
+    send_email(secrets, subject, text_body, html_body=html_body, dry_run=dry_run)
 
     # Persist seen.json only after the email went out, so a send failure does
     # not make us permanently forget to report these issues. Dry-run skips
