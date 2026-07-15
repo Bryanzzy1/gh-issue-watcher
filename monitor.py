@@ -36,7 +36,7 @@ for _stream in (sys.stdout, sys.stderr):
     except (AttributeError, ValueError):
         pass                                       # older Python or already wrapped
 
-# --- Constants -------------------------------------------------------------
+# Constants
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 CONFIG_PATH = os.path.join(HERE, "config.yaml")
@@ -61,9 +61,7 @@ FILTER_KEYS = (
 )
 
 
-# ===========================================================================
-# 1. Load config + secrets
-# ===========================================================================
+# Load config and secrets
 
 def load_config():
     """Read config.yaml and return (defaults, repos). Exit clearly on error."""
@@ -131,9 +129,7 @@ def load_secrets(require_email=True):
     return secrets
 
 
-# ===========================================================================
-# 2. GitHub HTTP helper (auth header, delay, rate-limit handling, retries)
-# ===========================================================================
+# GitHub HTTP helper (auth header, delay, rate-limit handling, retries)
 
 def github_session(token):
     """Build a requests.Session with the standard GitHub headers."""
@@ -232,9 +228,7 @@ def fetch_all(session, url, params):
     return items, True
 
 
-# ===========================================================================
-# 2b. Query issues per repo
-# ===========================================================================
+# Query issues per repo
 
 def fetch_open_issues(session, repo):
     """
@@ -266,9 +260,7 @@ def fetch_open_issues(session, repo):
     return list(by_number.values())
 
 
-# ===========================================================================
-# 3. Filters (all driven by config)
-# ===========================================================================
+# Filters (all driven by config)
 
 def matches_labels(issue, labels_any):
     """True if the issue carries at least one of the wanted labels."""
@@ -353,9 +345,7 @@ def has_linked_pr(session, repo, issue):
     return False, True                             # fetched fine, no PR link
 
 
-# ===========================================================================
-# 4. Dedupe store (seen.json)
-# ===========================================================================
+# Dedupe store (seen.json)
 
 def load_seen():
     """Load the dedupe map {'owner/name#number': first_seen_iso}."""
@@ -380,9 +370,7 @@ def issue_key(repo, issue):
     return f"{repo['owner']}/{repo['name']}#{issue['number']}"
 
 
-# ===========================================================================
-# 5. Email digest
-# ===========================================================================
+# Email digest
 
 def build_digest(matches):
     """Return (subject, plaintext_body) for the list of new matches."""
@@ -432,9 +420,7 @@ def send_email(secrets, subject, body, dry_run=False):
     print(f"  ✓ sent digest to {secrets['NOTIFY_TO']}")
 
 
-# ===========================================================================
 # Main
-# ===========================================================================
 
 def process_repo(session, repo):
     """
