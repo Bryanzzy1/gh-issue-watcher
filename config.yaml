@@ -20,7 +20,7 @@ defaults:
     - help-wanted
     - good second issue    # next level up from beginner
     - easy
-    - difficulty: easy
+    - "difficulty: easy"   # quoted: a colon in an unquoted item makes YAML a dict
     - good for beginners
     - up for grabs
     - newcomer

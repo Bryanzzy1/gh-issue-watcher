@@ -268,7 +268,9 @@ def fetch_open_issues(session, repo):
     """
     owner, name = repo["owner"], repo["name"]
     url = f"{GITHUB_API}/repos/{owner}/{name}/issues"
-    labels_any = repo.get("labels_any") or []
+    # Coerce to strings. A YAML item like `- difficulty: easy` parses as a dict,
+    # so guard against non-string entries rather than crashing the repo.
+    labels_any = [str(lb) for lb in (repo.get("labels_any") or [])]
 
     if labels_any:
         existing = fetch_repo_labels(session, repo)
@@ -300,7 +302,7 @@ def matches_labels(issue, labels_any):
     """True if the issue carries at least one of the wanted labels."""
     if not labels_any:
         return True                                # no label filter configured
-    wanted = {label.lower() for label in labels_any}
+    wanted = {str(label).lower() for label in labels_any}
     have = {lbl["name"].lower() for lbl in issue.get("labels", [])}
     return bool(wanted & have)  # non-empty intersection means at least one match
 
