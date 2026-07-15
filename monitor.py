@@ -234,6 +234,21 @@ def fetch_all(session, url, params):
 
 # Query issues per repo
 
+def fetch_repo_labels(session, repo):
+    """
+    Return the set of lowercased label names that exist in the repo.
+
+    Returns None if the label list could not be fetched, so the caller can fall
+    back to querying every configured label rather than skipping any.
+    """
+    owner, name = repo["owner"], repo["name"]
+    url = f"{GITHUB_API}/repos/{owner}/{name}/labels"
+    labels, ok = fetch_all(session, url, {"per_page": 100})
+    if not ok:
+        return None
+    return {lbl["name"].lower() for lbl in labels}
+
+
 def fetch_open_issues(session, repo):
     """
     Return open, non-PR issues for one repo, matching ANY of `labels_any`.
@@ -244,14 +259,29 @@ def fetch_open_issues(session, repo):
     and filtering client-side. A big repo has thousands of issues but only a few
     tagged "good first issue".
 
+    To avoid wasted requests, we first read the repo's label list and only query
+    the configured labels that actually exist there. Most repos have just a few
+    of our labels, so this cuts requests sharply with identical results. If the
+    label list cannot be fetched we fall back to querying every label.
+
     If no labels are configured we fetch all open issues.
     """
     owner, name = repo["owner"], repo["name"]
     url = f"{GITHUB_API}/repos/{owner}/{name}/issues"
     labels_any = repo.get("labels_any") or []
 
+    if labels_any:
+        existing = fetch_repo_labels(session, repo)
+        if existing is not None:
+            label_queries = [lb for lb in labels_any if lb.lower() in existing]
+            if not label_queries:
+                return []                          # none of our labels exist here
+        else:
+            label_queries = labels_any             # fetch failed, query them all
+    else:
+        label_queries = [None]                     # no filter, fetch everything
+
     by_number = {}                                 # dedupe issues seen via >1 label
-    label_queries = labels_any if labels_any else [None]
     for label in label_queries:
         params = {"state": "open", "per_page": 100}
         if label:
