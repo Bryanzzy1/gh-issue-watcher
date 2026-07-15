@@ -463,8 +463,8 @@ def build_digest(matches):
         issue = m["issue"]
         labels = ", ".join(lbl["name"] for lbl in issue.get("labels", [])) or "(none)"
         comments = issue.get("comments", 0)
-        age = _age_days(issue.get("created_at"))
-        age_str = f"{age}d old" if age is not None else "age unknown"
+        age = _age_days(issue.get("updated_at"))
+        age_str = f"updated {age}d ago" if age is not None else "updated recently"
         lines.append(f"{i}. {m['repo_full']}#{issue['number']}: {issue['title']}")
         lines.append(f"    {comments} comment(s), {age_str}")
         lines.append(f"    labels: {labels}")
@@ -492,8 +492,8 @@ def _build_html(matches, count):
     for i, m in enumerate(matches, 1):
         issue = m["issue"]
         comments = issue.get("comments", 0)
-        age = _age_days(issue.get("created_at"))
-        age_str = f"{age}d old" if age is not None else "age unknown"
+        age = _age_days(issue.get("updated_at"))
+        age_str = f"updated {age}d ago" if age is not None else "updated recently"
         url = _esc(issue.get("html_url", "#"))
         title = _esc(issue.get("title", "(no title)"))
         repo_ref = _esc(f"{m['repo_full']}#{issue['number']}")
