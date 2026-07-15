@@ -1,16 +1,14 @@
-# gfi-monitor configuration — this file is NON-secret and safe to commit/edit.
+# gfi-monitor configuration. This file is non-secret and safe to commit and edit.
 #
-# `defaults` apply to every repo. Any repo under `repos:` may override any
-# default key by simply listing it again with a new value.
+# `defaults` apply to every repo. Any repo under `repos:` can override any
+# default key by listing it again with a new value.
 #
-# The repos below are all CUDA- or ML-focused (C++ / Python / CUDA), verified
-# on 2026-07-15 to be actively maintained (pushed within days), NOT archived,
-# and to have a real history of beginner-friendly issues. The number in the
-# comment after each repo is how many OPEN "good first issue" (gfi) and
-# "help wanted" (hw) issues it had at verification time — a rough signal of how
-# often you'll get hits. Repos marked "(watch)" had 0 matching-label issues open
-# right then but are active with issue history, so they'll surface matches as
-# maintainers tag new ones. Tune freely.
+# All repos below are CUDA or ML focused (C++, Python, CUDA). Verified on
+# 2026-07-15 to exist, be actively maintained (recent push, not archived), and
+# have beginner-issue history. The count after each repo is how many open
+# "good first issue" (gfi) and "help wanted" (hw) issues it had at check time.
+# "(watch)" means 0 matching-label issues were open then but the repo is active,
+# so matches will appear as maintainers tag new issues.
 
 defaults:
   labels_any:              # an issue matches if it has ANY of these labels
@@ -19,14 +17,14 @@ defaults:
   require_unassigned: true       # skip issues that already have an assignee
   require_no_linked_pr: true     # skip issues that appear to have a linked PR
   max_age_days: 120              # skip issues not updated within this many days
-  min_age_days: 0                # skip issues NEWER than this (0 = no lower bound)
+  min_age_days: 0                # skip issues newer than this (0 means no lower bound)
 
 repos:
-  # ---- NVIDIA CUDA libraries ----
-  - {owner: NVIDIA, name: cccl}              # gfi=19 hw=7   (CUDA C++ core libs)
-  - {owner: NVIDIA, name: cutlass}           # gfi=2  hw=4   (CUDA GEMM templates)
-  - {owner: NVIDIA, name: DALI}              # gfi=2  hw=26  (data loading, C++/Py)
-  - {owner: NVIDIA, name: raft}              # gfi=2  hw=0   (ML/DS primitives)
+  # NVIDIA CUDA libraries
+  - {owner: NVIDIA, name: cccl}              # gfi=19 hw=7   CUDA C++ core libs
+  - {owner: NVIDIA, name: cutlass}           # gfi=2  hw=4   CUDA GEMM templates
+  - {owner: NVIDIA, name: DALI}              # gfi=2  hw=26  data loading, C++/Py
+  - {owner: NVIDIA, name: raft}              # gfi=2  hw=0   ML/DS primitives
   - {owner: NVIDIA, name: cuvs}              # (watch) vector search
   - {owner: NVIDIA, name: TensorRT}          # (watch) inference optimizer
   - {owner: NVIDIA, name: TensorRT-LLM}      # (watch) LLM inference
@@ -34,46 +32,46 @@ repos:
   - {owner: NVIDIA, name: warp}              # (watch) Python GPU kernels
   - {owner: NVIDIA, name: nccl}              # (watch) multi-GPU collectives
 
-  # ---- RAPIDS (GPU data science) ----
-  - {owner: rapidsai, name: cudf}            # gfi=38 hw=0   (GPU DataFrame)
-  - {owner: rapidsai, name: cuml}            # gfi=16 hw=0   (GPU ML)
-  - {owner: rapidsai, name: rmm}             # gfi=2  hw=0   (GPU memory mgmt)
-  - {owner: rapidsai, name: kvikio}          # gfi=1  hw=0   (GPU-direct IO)
+  # RAPIDS (GPU data science)
+  - {owner: rapidsai, name: cudf}            # gfi=38 hw=0   GPU DataFrame
+  - {owner: rapidsai, name: cuml}            # gfi=16 hw=0   GPU ML
+  - {owner: rapidsai, name: rmm}             # gfi=2  hw=0   GPU memory mgmt
+  - {owner: rapidsai, name: kvikio}          # gfi=1  hw=0   GPU-direct IO
   - {owner: rapidsai, name: cugraph}         # (watch) GPU graph analytics
 
-  # ---- PyTorch ecosystem ----
-  - {owner: pytorch, name: pytorch}          # gfi=44 hw=0   (core framework)
-  - {owner: pytorch, name: ao}               # gfi=24 hw=2   (quant/sparsity)
-  - {owner: pytorch, name: executorch}       # gfi=30 hw=1   (on-device inference)
-  - {owner: pytorch, name: tensordict}       # gfi=1  hw=0   (tensor containers)
+  # PyTorch ecosystem
+  - {owner: pytorch, name: pytorch}          # gfi=44 hw=0   core framework
+  - {owner: pytorch, name: ao}               # gfi=24 hw=2   quant/sparsity
+  - {owner: pytorch, name: executorch}       # gfi=30 hw=1   on-device inference
+  - {owner: pytorch, name: tensordict}       # gfi=1  hw=0   tensor containers
 
-  # ---- llama.cpp / GGML ----
-  - {owner: ggml-org, name: llama.cpp}       # gfi=17 hw=26  (LLM inference, C++)
-  - {owner: ggml-org, name: ggml}            # gfi=9  hw=4   (tensor lib, C)
-  - {owner: ggml-org, name: whisper.cpp}     # gfi=30 hw=10  (ASR inference, C++)
+  # llama.cpp and GGML
+  - {owner: ggml-org, name: llama.cpp}       # gfi=17 hw=26  LLM inference, C++
+  - {owner: ggml-org, name: ggml}            # gfi=9  hw=4   tensor lib, C
+  - {owner: ggml-org, name: whisper.cpp}     # gfi=30 hw=10  ASR inference, C++
 
-  # ---- Compilers / kernels / runtimes ----
-  - {owner: triton-lang, name: triton}       # hw=21         (GPU kernel DSL)
+  # Compilers, kernels, runtimes
+  - {owner: triton-lang, name: triton}       # hw=21         GPU kernel DSL
   - {owner: openxla, name: xla}              # (watch) XLA compiler
   - {owner: apache, name: tvm}               # (watch) deep-learning compiler
   - {owner: microsoft, name: onnxruntime}    # (watch) cross-platform inference
-  - {owner: onnx, name: onnx}                # gfi=18 hw=0   (model format)
-  - {owner: jax-ml, name: jax}               # gfi=4  hw=0   (autodiff/XLA, Python)
+  - {owner: onnx, name: onnx}                # gfi=18 hw=0   model format
+  - {owner: jax-ml, name: jax}               # gfi=4  hw=0   autodiff/XLA, Python
 
-  # ---- Inference / serving ----
-  - {owner: vllm-project, name: vllm}        # gfi=27 hw=36  (LLM serving)
+  # Inference and serving
+  - {owner: vllm-project, name: vllm}        # gfi=27 hw=36  LLM serving
   - {owner: Dao-AILab, name: flash-attention}# (watch) fused attention kernels
-  - {owner: google, name: gemma.cpp}         # gfi=1  hw=0   (Gemma inference, C++)
+  - {owner: google, name: gemma.cpp}         # gfi=1  hw=0   Gemma inference, C++
 
-  # ---- Classic ML / gradient boosting ----
-  - {owner: scikit-learn, name: scikit-learn}# hw=190        (Python ML)
-  - {owner: dmlc, name: xgboost}             # gfi=3  hw=0   (gradient boosting)
-  - {owner: lightgbm-org, name: LightGBM}    # gfi=4  hw=7   (gradient boosting)
-  - {owner: catboost, name: catboost}        # gfi=24 hw=19  (gradient boosting)
-  - {owner: pymc-devs, name: pymc}           # hw=31         (Bayesian modeling)
+  # Classic ML and gradient boosting
+  - {owner: scikit-learn, name: scikit-learn}# hw=190        Python ML
+  - {owner: dmlc, name: xgboost}             # gfi=3  hw=0   gradient boosting
+  - {owner: lightgbm-org, name: LightGBM}    # gfi=4  hw=7   gradient boosting
+  - {owner: catboost, name: catboost}        # gfi=24 hw=19  gradient boosting
+  - {owner: pymc-devs, name: pymc}           # hw=31         Bayesian modeling
 
-  # ---- C++ / CUDA infrastructure used across ML ----
-  - {owner: pybind, name: pybind11}          # hw=27         (C++/Python bindings)
+  # C++ and CUDA infrastructure used across ML
+  - {owner: pybind, name: pybind11}          # hw=27         C++/Python bindings
   - {owner: kokkos, name: kokkos}            # (watch) C++ performance portability
-  - {owner: taichi-dev, name: taichi}        # gfi=18 hw=0   (parallel compute, C++)
+  - {owner: taichi-dev, name: taichi}        # gfi=18 hw=0   parallel compute, C++
   - {owner: tensorflow, name: tensorflow}    # (watch) ML framework, C++/Python

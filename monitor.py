@@ -1,17 +1,16 @@
 #!/usr/bin/env python3
 """
-gfi-monitor — a read-only GitHub "good first issue" discovery bot.
+gfi-monitor. A read-only GitHub "good first issue" discovery bot.
 
-What it does, once per run:
-  1. Loads config.yaml (repos + filter rules) and .env (secrets).
-  2. Queries the GitHub REST API for open issues in each configured repo.
-  3. Filters them by label / assignee / recency / linked-PR rules.
-  4. Dedupes against seen.json so you never get the same issue twice.
-  5. Emails you ONE digest of the new matches (via Gmail App Password).
+Per run:
+  1. Load config.yaml (repos and filter rules) and .env (secrets).
+  2. Query the GitHub REST API for open issues in each repo.
+  3. Filter by label, assignee, recency, and linked-PR rules.
+  4. Dedupe against seen.json so you never get the same issue twice.
+  5. Email one digest of new matches via Gmail App Password.
 
-It never writes to GitHub. It only reads public issue data. The recurring
-behavior is provided by your OS scheduler (Task Scheduler / cron), NOT by a
-loop in this script — the script runs once and exits. See the README.
+It only reads public data and never writes to GitHub. It runs once and exits.
+The OS scheduler (Task Scheduler or cron) makes it recurring, not a loop.
 """
 
 import json
@@ -28,15 +27,14 @@ import requests
 import yaml
 from dotenv import load_dotenv
 
-# Issue titles from GitHub can contain any Unicode (emoji, CJK, ...). The
-# Windows console defaults to a legacy code page (cp1252) that can't encode
-# those, which would crash on print(). Reconfigure our streams to UTF-8 and
-# replace anything unencodable rather than raising.
+# Issue titles can contain any Unicode. The Windows console defaults to cp1252,
+# which crashes print() on emoji or CJK. Force UTF-8 and replace what it cannot
+# encode.
 for _stream in (sys.stdout, sys.stderr):
     try:
         _stream.reconfigure(encoding="utf-8", errors="replace")
     except (AttributeError, ValueError):
-        pass                                       # older Python / already-wrapped
+        pass                                       # older Python or already wrapped
 
 # --- Constants -------------------------------------------------------------
 
@@ -48,12 +46,12 @@ ENV_PATH = os.path.join(HERE, ".env")
 GITHUB_API = "https://api.github.com"
 # GitHub asks that every request identify itself with a User-Agent.
 USER_AGENT = "gfi-monitor (read-only issue discovery bot)"
-# Polite pause between API calls so we never hammer GitHub.
+# Pause between API calls to stay polite.
 REQUEST_DELAY_SECONDS = 0.5
-# How many times to retry a single request after a rate-limit / transient error.
+# Retries for one request after a rate-limit or transient error.
 MAX_RETRIES = 3
 
-# Keys that a per-repo entry may override from `defaults`.
+# Keys a per-repo entry can override from `defaults`.
 FILTER_KEYS = (
     "labels_any",
     "require_unassigned",
@@ -79,8 +77,8 @@ def load_config():
     if not repos:
         sys.exit("ERROR: config.yaml has no `repos:` to watch.")
 
-    # Merge each repo's own keys over the global defaults so downstream code
-    # can just read one flat dict per repo.
+    # Merge each repo's keys over the defaults so downstream code reads one flat
+    # dict per repo.
     merged = []
     for entry in repos:
         if "owner" not in entry or "name" not in entry:
@@ -100,7 +98,7 @@ def load_secrets(require_email=True):
     Load .env and return the secrets dict.
 
     If require_email is True, fail clearly when the Gmail secrets are missing.
-    In --dry-run we pass False so you can tune filters before setting up Gmail.
+    In --dry-run we pass False so filters can be tuned before Gmail is set up.
     """
     load_dotenv(ENV_PATH)
 
@@ -112,7 +110,7 @@ def load_secrets(require_email=True):
     }
 
     # Treat the .env.example placeholders as "not set" so a half-filled .env
-    # fails loudly instead of silently trying to log in with "replace_me".
+    # fails loudly instead of trying to log in with "replace_me".
     placeholders = {"", "replace_me_optional_read_only_public_token",
                     "replace_me_16_char_app_password", "you@gmail.com"}
 
@@ -126,7 +124,7 @@ def load_secrets(require_email=True):
         )
 
     # GITHUB_TOKEN is optional (only raises the rate limit). Clear the
-    # placeholder so we treat it as absent rather than sending a bogus token.
+    # placeholder so it is treated as absent, not sent as a bogus token.
     if secrets["GITHUB_TOKEN"] in placeholders:
         secrets["GITHUB_TOKEN"] = ""
 
@@ -146,34 +144,34 @@ def github_session(token):
         "X-GitHub-Api-Version": "2022-11-28",
     })
     if token:
-        # Bearer auth raises the rate limit to 5,000 req/hr. A read-only
-        # public token grants no extra access — it's purely for the limit.
+        # Bearer auth raises the rate limit to 5,000 req/hr. A read-only public
+        # token grants no extra access. It is only for the limit.
         session.headers["Authorization"] = f"Bearer {token}"
     return session
 
 
 def github_get(session, url, params=None):
     """
-    GET a GitHub URL with polite delay, rate-limit backoff, and retries.
+    GET a GitHub URL with delay, rate-limit backoff, and retries.
 
-    Returns the requests.Response on success, or None if it ultimately failed
-    (so callers can log-and-continue rather than crash the whole run).
+    Returns the Response on success, or None if it ultimately failed so callers
+    can log and continue instead of crashing the run.
     """
     for attempt in range(1, MAX_RETRIES + 1):
-        time.sleep(REQUEST_DELAY_SECONDS)          # be polite before every call
+        time.sleep(REQUEST_DELAY_SECONDS)          # pause before every call
         try:
             resp = session.get(url, params=params, timeout=30)
         except requests.RequestException as exc:
-            print(f"  ! network error ({exc}); attempt {attempt}/{MAX_RETRIES}")
+            print(f"  ! network error ({exc}), attempt {attempt}/{MAX_RETRIES}")
             time.sleep(2 * attempt)
             continue
 
-        # Primary rate limit: 403/429 with remaining == 0. Back off until reset.
+        # Primary rate limit is 403/429 with remaining == 0. Back off to reset.
         remaining = resp.headers.get("X-RateLimit-Remaining")
         if resp.status_code in (403, 429) and remaining == "0":
             reset = resp.headers.get("X-RateLimit-Reset")
             wait = _seconds_until_reset(reset)
-            print(f"  ! rate limited; waiting {wait}s for reset "
+            print(f"  ! rate limited, waiting {wait}s for reset "
                   f"(attempt {attempt}/{MAX_RETRIES})")
             time.sleep(wait)
             continue
@@ -181,7 +179,7 @@ def github_get(session, url, params=None):
         if resp.status_code == 200:
             return resp
 
-        # 404 etc. — not worth retrying; report and give up on this URL.
+        # 404 and similar are not worth retrying. Report and give up on this URL.
         print(f"  ! GitHub returned HTTP {resp.status_code} for {url}")
         return None
 
@@ -194,9 +192,9 @@ def _seconds_until_reset(reset_header):
     try:
         reset_epoch = int(reset_header)
     except (TypeError, ValueError):
-        return 60                                  # header missing/garbled: safe default
+        return 60                                  # header missing or garbled
     now = int(datetime.now(timezone.utc).timestamp())
-    # +5s cushion; clamp to [1, 3600] so we never sleep absurdly long.
+    # Add a 5s cushion. Clamp to [1, 3600] to avoid an absurdly long sleep.
     return max(1, min(reset_epoch - now + 5, 3600))
 
 
@@ -210,8 +208,8 @@ def paginate(session, url, params):
             return                                 # error already logged
         for item in resp.json():
             yield item
-        # After the first page, the `next` URL already carries the query
-        # string, so drop our params to avoid duplicating them.
+        # The `next` URL already carries the query string, so drop our params
+        # to avoid duplicating them.
         url = resp.links.get("next", {}).get("url")
         params = None
 
@@ -219,7 +217,7 @@ def paginate(session, url, params):
 def fetch_all(session, url, params):
     """
     Like paginate() but returns (items, ok). `ok` is False if any page failed
-    to fetch, so callers can tell "empty result" apart from "request errored".
+    to fetch, so callers can tell an empty result from a request error.
     """
     items = []
     params = dict(params)
@@ -242,14 +240,13 @@ def fetch_open_issues(session, repo):
     """
     Return open, non-PR issues for one repo, matching ANY of `labels_any`.
 
-    GitHub's `labels=` query param is AND-style (an issue must carry ALL listed
-    labels), but the user wants OR semantics. So we query ONCE PER LABEL and
-    union the results, deduping by issue number. This is dramatically cheaper
-    than fetching every open issue and filtering client-side — a big repo like
-    pytorch has thousands of open issues but only a handful tagged
-    "good first issue".
+    GitHub's `labels=` param is AND-style (issue must carry ALL listed labels),
+    but we want OR semantics. So we query once per label and union the results,
+    deduping by issue number. This is far cheaper than fetching every open issue
+    and filtering client-side. A big repo has thousands of issues but only a few
+    tagged "good first issue".
 
-    If no labels are configured we fall back to fetching all open issues.
+    If no labels are configured we fetch all open issues.
     """
     owner, name = repo["owner"], repo["name"]
     url = f"{GITHUB_API}/repos/{owner}/{name}/issues"
@@ -262,7 +259,7 @@ def fetch_open_issues(session, repo):
         if label:
             params["labels"] = label               # server-side single-label filter
         for item in paginate(session, url, params):
-            # The /issues endpoint returns PRs too; a `pull_request` key marks them.
+            # The /issues endpoint returns PRs too. A `pull_request` key marks them.
             if "pull_request" in item:
                 continue
             by_number[item["number"]] = item
@@ -279,7 +276,7 @@ def matches_labels(issue, labels_any):
         return True                                # no label filter configured
     wanted = {label.lower() for label in labels_any}
     have = {lbl["name"].lower() for lbl in issue.get("labels", [])}
-    return bool(wanted & have)
+    return bool(wanted & have)  # non-empty intersection means at least one match
 
 
 def is_unassigned(issue):
@@ -291,12 +288,12 @@ def within_recency(issue, max_age_days, min_age_days):
     """
     True if the issue's `updated_at` is within [min_age_days, max_age_days].
 
-    max_age_days: skip issues not touched recently (stale).
-    min_age_days: skip issues that are TOO new (avoid racing on brand-new ones).
+    max_age_days skips stale issues not touched recently.
+    min_age_days skips issues that are too new, to avoid racing on fresh ones.
     """
     updated = _parse_iso(issue.get("updated_at"))
     if updated is None:
-        return True                                # can't tell; don't exclude
+        return True                                # cannot tell, so do not exclude
     now = datetime.now(timezone.utc)
     age = now - updated
     if max_age_days and age > timedelta(days=max_age_days):
@@ -311,7 +308,7 @@ def _parse_iso(value):
     if not value:
         return None
     try:
-        # Python's fromisoformat handles the '+00:00' form; swap trailing Z.
+        # fromisoformat handles the '+00:00' form, so swap the trailing Z.
         return datetime.fromisoformat(value.replace("Z", "+00:00"))
     except ValueError:
         return None
@@ -319,20 +316,19 @@ def _parse_iso(value):
 
 def has_linked_pr(session, repo, issue):
     """
-    Best-effort detection of whether a PR is linked to this issue.
+    Best-effort check of whether a PR is linked to this issue.
 
-    The plain issue object does NOT expose linked PRs, so we read the issue
+    The plain issue object does not expose linked PRs, so we read the issue
     timeline and look for events that connect a PR:
-      - `connected` / `disconnected` — an explicit "linked pull request"
-      - `cross-referenced` whose source is a PR (someone referenced this issue
-        from a PR)
+      - `connected`: an explicit linked pull request.
+      - `cross-referenced` whose source is a PR.
 
-    This costs one extra request per issue, so callers only invoke it for
-    issues that already passed the cheaper filters.
+    This costs one extra request per issue, so callers only run it on issues
+    that already passed the cheaper filters.
 
-    Returns (linked: bool, reliable: bool). If the timeline can't be fetched,
-    we return (False, False) so the caller can flag the issue as "unverified"
-    rather than silently dropping a potentially-good match.
+    Returns (linked, reliable). If the timeline cannot be fetched it returns
+    (False, False) so the caller keeps the issue but flags it as unverified
+    instead of dropping a possibly good match.
     """
     owner, name = repo["owner"], repo["name"]
     number = issue["number"]
@@ -340,21 +336,21 @@ def has_linked_pr(session, repo, issue):
 
     events, ok = fetch_all(session, url, {"per_page": 100})
     if not ok:
-        # The timeline request failed — we genuinely don't know. Report
-        # unreliable so the caller keeps the issue but flags it for manual check.
+        # Fetch failed, so we do not know. Report unreliable so the caller keeps
+        # the issue but flags it for a manual check.
         return False, False
 
     for event in events:
         etype = event.get("event")
         if etype in ("connected", "cross-referenced", "referenced"):
-            # `connected` is always an explicit PR link. For cross-referenced /
-            # referenced, confirm the source is actually a PR, not another issue.
+            # `connected` is always a PR link. For cross-referenced or
+            # referenced, confirm the source is a PR and not another issue.
             source = event.get("source", {}) or {}
             src_issue = source.get("issue", {}) or {}
             if etype == "connected" or "pull_request" in src_issue:
                 return True, True
 
-    return False, True                             # fetched fine, saw no PR link
+    return False, True                             # fetched fine, no PR link
 
 
 # ===========================================================================
@@ -369,7 +365,7 @@ def load_seen():
         with open(SEEN_PATH, "r", encoding="utf-8") as f:
             return json.load(f)
     except (json.JSONDecodeError, OSError):
-        print("  ! seen.json unreadable; starting fresh (may re-report issues)")
+        print("  ! seen.json unreadable, starting fresh (may re-report issues)")
         return {}
 
 
@@ -409,7 +405,7 @@ def build_digest(matches):
                          "(automatic check was inconclusive)")
         lines.append("")
 
-    lines.append("— gfi-monitor (read-only). This tool never writes to GitHub.")
+    lines.append("gfi-monitor (read-only). This tool never writes to GitHub.")
     return subject, "\n".join(lines)
 
 
@@ -423,7 +419,7 @@ def send_email(secrets, subject, body, dry_run=False):
     msg.set_content(body)
 
     if dry_run:
-        print("\n===== DRY RUN — email NOT sent; showing what would be sent =====")
+        print("\n===== DRY RUN, email not sent, showing what would be sent =====")
         print(f"From: {msg['From']}\nTo: {msg['To']}\nSubject: {msg['Subject']}\n")
         print(body)
         print("===== END DRY RUN =====\n")
@@ -443,8 +439,8 @@ def send_email(secrets, subject, body, dry_run=False):
 def process_repo(session, repo):
     """
     Run all filters for one repo and return a list of match dicts.
-    Never raises: on failure it logs and returns whatever it has so a single
-    bad repo can't sink the whole run.
+    Never raises. On failure it logs and returns what it has so one bad repo
+    cannot sink the whole run.
     """
     full = f"{repo['owner']}/{repo['name']}"
     print(f"» {full}")
@@ -477,9 +473,9 @@ def process_repo(session, repo):
                 print(f"  ! linked-PR check failed for #{issue['number']}: {exc}")
                 linked, reliable = False, False
             if linked:
-                continue                            # confidently has a PR: skip
+                continue                            # has a PR, skip
             if not reliable:
-                pr_flag = True                      # inconclusive: keep but flag
+                pr_flag = True                      # inconclusive, keep but flag
 
         matches.append({
             "repo_full": full,
@@ -499,7 +495,7 @@ def main():
     session = github_session(secrets["GITHUB_TOKEN"])
     seen = load_seen()
 
-    print(f"gfi-monitor starting — watching {len(repos)} repo(s)"
+    print(f"gfi-monitor starting, watching {len(repos)} repo(s)"
           + (" [DRY RUN]" if dry_run else ""))
 
     all_matches = []
@@ -519,15 +515,15 @@ def main():
     print(f"\n{len(all_matches)} total match(es), {len(new_matches)} new.")
 
     if not new_matches:
-        print("Nothing new to report. (silent success — no email sent)")
+        print("Nothing new to report. Silent success, no email sent.")
         return
 
     subject, body = build_digest(new_matches)
     send_email(secrets, subject, body, dry_run=dry_run)
 
-    # Only persist seen.json once the email actually went out, so a send
-    # failure doesn't cause us to permanently forget to report these issues.
-    # In dry-run we skip persistence so you can re-run and see the same results.
+    # Persist seen.json only after the email went out, so a send failure does
+    # not make us permanently forget to report these issues. Dry-run skips
+    # persistence so repeated runs show the same results.
     if not dry_run:
         save_seen(seen)
         print(f"  ✓ updated seen.json ({len(seen)} total tracked)")
