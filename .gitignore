@@ -1,0 +1,15 @@
+# Secrets — never commit real credentials
+.env
+
+# Local dedupe store the script writes on every run
+seen.json
+
+# Log files from scheduled runs
+monitor.log
+*.log
+
+# Python cruft
+__pycache__/
+*.pyc
+.venv/
+venv/

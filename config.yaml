@@ -1,0 +1,31 @@
+# gfi-monitor configuration — this file is NON-secret and safe to commit/edit.
+#
+# `defaults` apply to every repo. Any repo under `repos:` may override any
+# default key by simply listing it again with a new value.
+
+defaults:
+  labels_any:              # an issue matches if it has ANY one of these labels
+    - good first issue
+  require_unassigned: true       # skip issues that already have an assignee
+  require_no_linked_pr: true     # skip issues that appear to have a linked PR
+  max_age_days: 90               # skip issues not updated within this many days
+  min_age_days: 0                # skip issues NEWER than this (0 = no lower bound)
+
+# Repos to watch. Each entry needs `owner` and `name`; everything else is
+# optional and overrides the matching key from `defaults` above.
+repos:
+  - owner: rapidsai
+    name: cuml
+
+  - owner: rapidsai
+    name: raft
+
+  - owner: ggml-org
+    name: llama.cpp
+    labels_any:
+      - good first issue
+      - help wanted
+
+  - owner: pytorch
+    name: pytorch
+    max_age_days: 30           # this repo moves fast; only surface recent issues
