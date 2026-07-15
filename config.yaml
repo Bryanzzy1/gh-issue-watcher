@@ -16,7 +16,7 @@ defaults:
     - help wanted
   require_unassigned: true       # skip issues that already have an assignee
   require_no_linked_pr: true     # skip issues that appear to have a linked PR
-  max_age_days: 120              # skip issues not updated within this many days
+  max_age_days: 90               # skip issues not updated within the last 3 months
   min_age_days: 0                # skip issues newer than this (0 means no lower bound)
 
 repos:

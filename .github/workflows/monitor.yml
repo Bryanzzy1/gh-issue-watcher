@@ -42,13 +42,23 @@ jobs:
 
       - name: Persist seen.json
         # seen.json is git-ignored for local use, so force-add it here.
+        # Retry with rebase in case a push landed while the job was running.
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add -f seen.json || true
           if git diff --cached --quiet; then
             echo "No seen.json changes to commit."
-          else
-            git commit -m "Update seen.json [skip ci]"
-            git push
+            exit 0
           fi
+          git commit -m "Update seen.json [skip ci]"
+          for attempt in 1 2 3 4 5; do
+            if git push; then
+              echo "Pushed on attempt $attempt."
+              exit 0
+            fi
+            echo "Push rejected, rebasing and retrying (attempt $attempt)."
+            git pull --rebase --autostash origin main || true
+          done
+          echo "Could not push seen.json after retries."
+          exit 1
