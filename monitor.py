@@ -463,10 +463,12 @@ def build_digest(matches):
         issue = m["issue"]
         labels = ", ".join(lbl["name"] for lbl in issue.get("labels", [])) or "(none)"
         comments = issue.get("comments", 0)
-        age = _age_days(issue.get("updated_at"))
-        age_str = f"updated {age}d ago" if age is not None else "updated recently"
+        upd = _age_days(issue.get("updated_at"))
+        cre = _age_days(issue.get("created_at"))
+        upd_str = f"updated {upd}d ago" if upd is not None else "updated recently"
+        cre_str = f"opened {cre}d ago" if cre is not None else "opened recently"
         lines.append(f"{i}. {m['repo_full']}#{issue['number']}: {issue['title']}")
-        lines.append(f"    {comments} comment(s), {age_str}")
+        lines.append(f"    {comments} comment(s), {upd_str}, {cre_str}")
         lines.append(f"    labels: {labels}")
         lines.append(f"    {issue.get('html_url', '?')}")
         if m["pr_flag"]:
@@ -492,8 +494,10 @@ def _build_html(matches, count):
     for i, m in enumerate(matches, 1):
         issue = m["issue"]
         comments = issue.get("comments", 0)
-        age = _age_days(issue.get("updated_at"))
-        age_str = f"updated {age}d ago" if age is not None else "updated recently"
+        upd = _age_days(issue.get("updated_at"))
+        cre = _age_days(issue.get("created_at"))
+        upd_str = f"updated {upd}d ago" if upd is not None else "updated recently"
+        cre_str = f"opened {cre}d ago" if cre is not None else "opened recently"
         url = _esc(issue.get("html_url", "#"))
         title = _esc(issue.get("title", "(no title)"))
         repo_ref = _esc(f"{m['repo_full']}#{issue['number']}")
@@ -517,7 +521,8 @@ def _build_html(matches, count):
                font-size:15px;font-weight:600;">{title}</a>
             <div style="color:#666;font-size:12px;margin:3px 0;">{repo_ref}
               &nbsp;&middot;&nbsp; {comments} comment(s)
-              &nbsp;&middot;&nbsp; {age_str}</div>
+              &nbsp;&middot;&nbsp; {upd_str}
+              &nbsp;&middot;&nbsp; {cre_str}</div>
             <div style="margin-top:4px;">{label_chips}</div>{flag}
           </td>
         </tr>""")
