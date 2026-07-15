@@ -50,6 +50,10 @@ USER_AGENT = "gfi-monitor (read-only issue discovery bot)"
 REQUEST_DELAY_SECONDS = 0.5
 # Retries for one request after a rate-limit or transient error.
 MAX_RETRIES = 3
+# Drop seen.json entries older than this. They can never re-trigger an email
+# because the recency filter (max_age_days) already excludes stale issues, so
+# pruning keeps the file bounded without causing duplicates.
+SEEN_TTL_DAYS = 180
 
 # Keys a per-repo entry can override from `defaults`.
 FILTER_KEYS = (
@@ -365,6 +369,20 @@ def save_seen(seen):
         json.dump(seen, f, indent=2, sort_keys=True)
 
 
+def prune_seen(seen):
+    """Drop entries older than SEEN_TTL_DAYS. Returns the number removed."""
+    cutoff = datetime.now(timezone.utc) - timedelta(days=SEEN_TTL_DAYS)
+    stale = []
+    for key, first_seen in seen.items():
+        ts = _parse_iso(first_seen)
+        # Keep entries with an unparseable timestamp to stay safe.
+        if ts is not None and ts < cutoff:
+            stale.append(key)
+    for key in stale:
+        del seen[key]
+    return len(stale)
+
+
 def issue_key(repo, issue):
     """Stable dedupe key, e.g. 'pytorch/pytorch#12345'."""
     return f"{repo['owner']}/{repo['name']}#{issue['number']}"
@@ -475,6 +493,9 @@ def process_repo(session, repo):
 
 def main():
     dry_run = "--dry-run" in sys.argv
+    # --seed records current matches into seen.json without emailing. Use it
+    # once on first setup so the first real run only emails genuinely new issues.
+    seed = "--seed" in sys.argv
 
     # --test-email sends one fixed message and exits, to confirm SMTP works.
     if "--test-email" in sys.argv:
@@ -488,12 +509,19 @@ def main():
         return
 
     _defaults, repos = load_config()
-    secrets = load_secrets(require_email=not dry_run)
+    # Seed and dry-run do not send email, so their secrets are optional.
+    secrets = load_secrets(require_email=not dry_run and not seed)
     session = github_session(secrets["GITHUB_TOKEN"])
     seen = load_seen()
 
+    # Drop stale entries first so the file stays bounded.
+    removed = prune_seen(seen)
+    if removed:
+        print(f"pruned {removed} seen.json entr(ies) older than {SEEN_TTL_DAYS} days")
+
     print(f"gfi-monitor starting, watching {len(repos)} repo(s)"
-          + (" [DRY RUN]" if dry_run else ""))
+          + (" [DRY RUN]" if dry_run else "")
+          + (" [SEED]" if seed else ""))
 
     all_matches = []
     for repo in repos:
@@ -511,7 +539,16 @@ def main():
 
     print(f"\n{len(all_matches)} total match(es), {len(new_matches)} new.")
 
+    # Seed mode records everything as seen and exits without emailing.
+    if seed:
+        save_seen(seen)
+        print(f"  seeded seen.json with {len(seen)} issue(s), no email sent")
+        return
+
     if not new_matches:
+        # Still save so pruning and any nothing-new bookkeeping persists.
+        if not dry_run and removed:
+            save_seen(seen)
         print("Nothing new to report. Silent success, no email sent.")
         return
 
@@ -523,7 +560,7 @@ def main():
     # persistence so repeated runs show the same results.
     if not dry_run:
         save_seen(seen)
-        print(f"  ✓ updated seen.json ({len(seen)} total tracked)")
+        print(f"  updated seen.json ({len(seen)} total tracked)")
 
 
 if __name__ == "__main__":

@@ -62,11 +62,21 @@ Test that email sending works, without waiting for real matches:
 python monitor.py --test-email
 ```
 
+Optional. Seed `seen.json` with all current matches without emailing, so your
+first real run only emails genuinely new issues instead of a large first digest:
+
+```bash
+python monitor.py --seed
+```
+
 Then run for real to send the first digest and populate `seen.json`:
 
 ```bash
 python monitor.py
 ```
+
+`seen.json` prevents duplicate emails. Entries older than 180 days are pruned
+automatically, so the file stays small.
 
 ## Schedule it
 
