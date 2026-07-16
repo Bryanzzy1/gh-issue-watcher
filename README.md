@@ -1,12 +1,10 @@
 # gfi-monitor
 
 A small, read-only bot that scans GitHub repos for beginner-friendly
-issues and emails you a digest of new ones. It only reads public data and never
-writes to GitHub. It runs once and exits. Your OS scheduler makes it recurring.
-
+issues and emails you a digest of new ones.
 ## How it works
 
-1. Loads `config.yaml` (repos plus filter rules) and `.env` (secrets).
+1. Loads `config.yaml` and `.env`.
 2. Queries open issues per repo via the GitHub REST API. PRs excluded.
 3. Filters by label, unassigned, recency, and a best-effort no-linked-PR check.
 4. Dedupes against `seen.json` so you never get the same issue twice.
