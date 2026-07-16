@@ -21,7 +21,7 @@ python -m pip install -r requirements.txt
 
 ## Create your `.env`
 
-Copy the template and fill in your values. Never commit `.env`. It is git-ignored.
+Copy the template and fill in your values.
 
 ```bash
 cp .env.example .env      # Windows: copy .env.example .env
@@ -80,11 +80,10 @@ automatically, so the file stays small.
 
 ## Schedule it
 
-### GitHub Actions (runs 24/7, does not need your computer)
+### GitHub Actions
 
 The workflow in `.github/workflows/monitor.yml` runs on GitHub's servers every
-3 hours, so it works whether your computer is on, asleep, or off. Free for a
-public repo.
+3 hours.
 
 Setup:
 
@@ -95,18 +94,16 @@ Setup:
    - `NOTIFY_TO`: where the digest goes.
 2. The workflow uses the built-in token for API reads, so no extra token is
    required. With about 100 repos, adding a personal token gives more rate-limit
-   headroom (5,000 req/hr instead of 1,000). To use one, create a read-only
-   public token with no scopes and add it as a secret named `GH_API_TOKEN`. The
+   headroom. To use one, create a read-onl public token with no scopes and add it as a secret named `GH_API_TOKEN`. The
    workflow uses it automatically if present.
-3. Trigger a first run from the Actions tab (Run workflow) to confirm it works.
+3. Trigger a first run from the Actions tab
 
 The run commits `seen.json` back to the repo so dedupe state carries across
 runs. That file holds only issue keys and timestamps, no secrets.
 
-### Windows Task Scheduler (local, only while the PC is on)
+### Windows Task Scheduler
 
-This runs only while the computer is powered on and not rebooted. Use GitHub
-Actions above if you want true 24/7.
+This runs only while the computer is powered on and not rebooted.
 
 1. Create Basic Task named "gfi-monitor". Trigger: Daily.
 2. Edit the trigger, check "Repeat task every: 3 hours" for 1 day.
