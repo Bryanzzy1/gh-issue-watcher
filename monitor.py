@@ -15,6 +15,7 @@ The OS scheduler (Task Scheduler or cron) makes it recurring, not a loop.
 
 import json
 import os
+import re
 import smtplib
 import ssl
 import sys
@@ -346,15 +347,15 @@ def has_linked_pr(session, repo, issue):
     """
     Best-effort check of whether a PR is linked to this issue.
 
-    The plain issue object does not expose linked PRs, so we read the issue
-    timeline and look for events that connect a PR:
-      - `connected`: an explicit linked pull request.
-      - `cross-referenced` whose source is a PR.
+    Two methods, because neither catches everything:
+      1. Timeline events (`connected`, `cross-referenced` whose source is a PR).
+      2. Fallback search for an open PR referencing the issue number. The
+         timeline sometimes lags or omits a link even when a PR says
+         "Fixes #123", so this catches PRs the timeline misses.
 
-    This costs one extra request per issue, so callers only run it on issues
-    that already passed the cheaper filters.
+    Callers only run this on issues that passed the cheaper filters.
 
-    Returns (linked, reliable). If the timeline cannot be fetched it returns
+    Returns (linked, reliable). If detection cannot be completed it returns
     (False, False) so the caller keeps the issue but flags it as unverified
     instead of dropping a possibly good match.
     """
@@ -378,7 +379,37 @@ def has_linked_pr(session, repo, issue):
             if etype == "connected" or "pull_request" in src_issue:
                 return True, True
 
-    return False, True                             # fetched fine, no PR link
+    # Timeline showed no link. Fall back to a PR search.
+    return _search_linked_pr(session, repo, number)
+
+
+def _search_linked_pr(session, repo, number):
+    """
+    Search for an open PR that references the issue number.
+
+    Returns (linked, reliable). Used as a fallback when the timeline shows no
+    link. Uses the search API, which has a stricter rate limit, so a failure
+    here just returns (False, True): the timeline already said no link, so we
+    treat the issue as available rather than blocking on the search.
+    """
+    owner, name = repo["owner"], repo["name"]
+    query = f"repo:{owner}/{name} is:pr is:open {number}"
+    url = f"{GITHUB_API}/search/issues"
+    resp = github_get(session, url, params={"q": query, "per_page": 20})
+    if resp is None:
+        return False, True                         # search failed, trust timeline
+
+    # Match a reference to exactly this issue, with a word boundary after the
+    # number so #7779 does not match inside #17779 or #77790.
+    ref_pattern = re.compile(
+        rf"(#{number}|/issues/{number}|/pull/{number})(?!\d)"
+    )
+    for item in resp.json().get("items", []):
+        text = (item.get("body") or "") + "\n" + (item.get("title") or "")
+        if ref_pattern.search(text):
+            return True, True
+
+    return False, True                             # no referencing PR found
 
 
 # Dedupe store (seen.json)
