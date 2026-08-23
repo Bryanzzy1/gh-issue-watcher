@@ -90,6 +90,7 @@
   "ggml-org/whisper.cpp#1557": "2026-07-15T18:49:24.681887+00:00",
   "google-deepmind/optax#357": "2026-07-15T18:49:24.681887+00:00",
   "huggingface/accelerate#3078": "2026-07-15T18:49:24.681887+00:00",
+  "huggingface/datasets#353": "2026-08-23T18:24:56.406620+00:00",
   "huggingface/diffusers#10076": "2026-07-15T18:49:24.681887+00:00",
   "huggingface/diffusers#1109": "2026-07-15T18:49:24.681887+00:00",
   "huggingface/diffusers#11216": "2026-07-22T22:07:49.566996+00:00",
