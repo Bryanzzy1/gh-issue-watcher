@@ -112,6 +112,7 @@
   "huggingface/diffusers#9635": "2026-07-15T18:49:24.681887+00:00",
   "huggingface/peft#2310": "2026-07-15T18:49:24.681887+00:00",
   "huggingface/peft#3508": "2026-08-04T16:58:55.105314+00:00",
+  "huggingface/peft#3738": "2026-09-14T21:20:50.179475+00:00",
   "huggingface/transformers#26350": "2026-07-15T18:49:24.681887+00:00",
   "huggingface/transformers#27975": "2026-09-06T12:39:35.279068+00:00",
   "huggingface/transformers#30064": "2026-07-15T18:49:24.681887+00:00",
